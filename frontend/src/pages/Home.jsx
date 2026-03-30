@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import BurgerMenu from '../components/BurgerMenu';
 
 export default function Home({ role, username, onLogout }) {
   const [activeTab, setActiveTab] = useState('explore');
@@ -8,6 +9,7 @@ export default function Home({ role, username, onLogout }) {
   // RBAC rendering helpers
   const isAdmin = role === 'ADMIN';
   const isOwner = role === 'OWNER';
+  const isUser  = role === 'USER';
   
   return (
     <div style={styles.container}>
@@ -32,11 +34,25 @@ export default function Home({ role, username, onLogout }) {
         </div>
 
         <div style={styles.navRight}>
-          <div style={styles.userInfo}>
-            <span style={{fontSize: '14px', fontWeight: 'bold'}}>{username}</span>
-          </div>
-          <button onClick={() => navigate('/profile')} style={styles.profileBtn}>Profile</button>
-          <button onClick={onLogout} style={styles.logoutBtn}>Logout</button>
+          {isUser ? (
+            // USER: pill button → profile + burger menu with full nav
+            <>
+              <button id="user-btn" onClick={() => navigate('/profile')} style={styles.userBtn}>
+                <span style={styles.avatarInitial}>{username?.[0]?.toUpperCase()}</span>
+                <span>{username}</span>
+              </button>
+              <BurgerMenu onLogout={onLogout} />
+            </>
+          ) : (
+            // ADMIN / OWNER: simple original buttons
+            <>
+              <div style={styles.userInfo}>
+                <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{username}</span>
+              </div>
+              <button onClick={() => navigate('/profile')} style={styles.profileBtn}>Profile</button>
+              <button onClick={onLogout} style={styles.logoutBtn}>Logout</button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -185,21 +201,39 @@ const styles = {
   navRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '20px'
+    gap: '12px'
   },
+  userBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    color: 'var(--text-main)',
+    cursor: 'pointer',
+    fontWeight: '600',
+    padding: '8px 14px',
+    borderRadius: '30px',
+    fontSize: '14px',
+    transition: 'all 0.2s',
+  },
+  avatarInitial: {
+    width: '26px',
+    height: '26px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, var(--primary), #fb7185)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    fontSize: '13px',
+    fontWeight: 'bold',
+  },
+  // ADMIN / OWNER nav styles (not shown to USER)
   userInfo: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-  },
-  userRoleBadge: {
-    fontSize: '11px',
-    fontWeight: 'bold',
-    padding: '4px 10px',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: '20px',
-    color: 'var(--text-main)',
-    border: '1px solid var(--glass-border)'
   },
   profileBtn: {
     background: 'transparent',

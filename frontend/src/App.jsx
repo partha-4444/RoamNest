@@ -2,6 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
+import Wishlists from './pages/Wishlists';
+import Trips from './pages/Trips';
+import Messages from './pages/Messages';
 import { useState } from 'react';
 
 function App() {
@@ -18,12 +21,18 @@ function App() {
     setUsername(null);
   };
 
+  const authProps = { role: userRole, username, onLogout: handleLogout };
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={userRole ? <Navigate to="/home" /> : <Login onLogin={handleLogin} />} />
-        <Route path="/home" element={userRole ? <Home role={userRole} username={username} onLogout={handleLogout} /> : <Navigate to="/" />} />
-        <Route path="/profile" element={userRole ? <Profile role={userRole} username={username} onLogout={handleLogout} /> : <Navigate to="/" />} />
+        <Route path="/home"      element={userRole ? <Home      {...authProps} /> : <Navigate to="/" />} />
+        <Route path="/profile"   element={userRole ? <Profile   {...authProps} /> : <Navigate to="/" />} />
+        {/* USER-only routes */}
+        <Route path="/wishlists" element={userRole === 'USER' ? <Wishlists {...authProps} /> : userRole ? <Navigate to="/home" /> : <Navigate to="/" />} />
+        <Route path="/trips"     element={userRole === 'USER' ? <Trips     {...authProps} /> : userRole ? <Navigate to="/home" /> : <Navigate to="/" />} />
+        <Route path="/messages"  element={userRole === 'USER' ? <Messages  {...authProps} /> : userRole ? <Navigate to="/home" /> : <Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
