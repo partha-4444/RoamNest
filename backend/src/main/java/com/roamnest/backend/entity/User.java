@@ -18,7 +18,14 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
     private String role; // e.g., "ADMIN", "OWNER", "USER"
+
+    @Column(nullable = false)
+    private boolean enabled = true;
 
     private String phoneNo;
 
@@ -60,6 +67,22 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public String getPhoneNo() {

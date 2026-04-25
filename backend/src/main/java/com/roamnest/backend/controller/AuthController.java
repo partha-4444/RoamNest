@@ -1,36 +1,48 @@
 package com.roamnest.backend.controller;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import com.roamnest.backend.dto.AuthResponse;
+import com.roamnest.backend.dto.LoginRequest;
+import com.roamnest.backend.dto.SignupRequest;
+import com.roamnest.backend.service.AuthHandler;
+import com.roamnest.backend.service.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/auth")
 public class AuthController {
 
+    private final AuthService authService;
+    private final AuthHandler authHandler;
+
+    public AuthController(AuthService authService, AuthHandler authHandler) {
+        this.authService = authService;
+        this.authHandler = authHandler;
+    }
+
+    @PostMapping("/signup")
+    public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
+    }
+
     @PostMapping("/login")
-    public Map<String, String> login(Authentication authentication) {
-        // If they reach here, Spring Security already verified their basic auth credentials
-        Map<String, String> response = new HashMap<>();
-        if (authentication != null && authentication.isAuthenticated()) {
-            response.put("username", authentication.getName());
-            // Extract the first role
-            String role = authentication.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .findFirst()
-                    .orElse("ROLE_USER");
-            // Remove the "ROLE_" prefix for the frontend
-            response.put("role", role.replace("ROLE_", ""));
-            response.put("status", "success");
-        } else {
-            response.put("status", "error");
-            response.put("message", "Authentication failed");
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(@RequestHeader("Authorization") String authHeader) {
+        String token = authHandler.extractBearerToken(authHeader).orElse("");
+        if (!token.isBlank()) {
+            authService.logout(token);
         }
-        return response;
+        return ResponseEntity.ok(Map.of("status", "success"));
     }
 }
