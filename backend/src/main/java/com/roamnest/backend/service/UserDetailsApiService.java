@@ -21,6 +21,12 @@ public class UserDetailsApiService {
         this.userDao = userDao;
     }
 
+    public UserDetailsResponse getCurrentUserDetails(String username) {
+        return userDao.findByUsername(username)
+            .map(this::toResponse)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
     public List<UserDetailsResponse> getUserDetailsByAccessScope(String username) {
         UserAccount currentUser = userDao.findByUsername(username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));

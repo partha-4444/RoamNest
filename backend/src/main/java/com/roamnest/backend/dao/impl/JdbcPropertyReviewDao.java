@@ -2,6 +2,7 @@ package com.roamnest.backend.dao.impl;
 
 import com.roamnest.backend.dao.PropertyReviewDao;
 import com.roamnest.backend.dto.ReviewSummary;
+import com.roamnest.backend.dto.UserReviewResponse;
 import com.roamnest.backend.model.PropertyReviewRecord;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -95,6 +96,30 @@ public class JdbcPropertyReviewDao implements PropertyReviewDao {
             sql,
             new MapSqlParameterSource("propertyId", propertyId),
             REVIEW_ROW_MAPPER);
+    }
+
+    @Override
+    public List<UserReviewResponse> findByUserId(Long userId) {
+        String sql = """
+            select r.id, r.booking_id, r.property_id, p.title as property_title,
+                   p.location as property_location, r.rating, r.comment, r.created_at
+            from rn_property_reviews r
+            join rn_properties p on p.id = r.property_id
+            where r.user_id = :userId
+            order by r.created_at desc, r.id desc
+            """;
+        return jdbcTemplate.query(
+            sql,
+            new MapSqlParameterSource("userId", userId),
+            (rs, rowNum) -> new UserReviewResponse(
+                rs.getLong("id"),
+                rs.getLong("booking_id"),
+                rs.getLong("property_id"),
+                rs.getString("property_title"),
+                rs.getString("property_location"),
+                rs.getInt("rating"),
+                rs.getString("comment"),
+                rs.getObject("created_at", OffsetDateTime.class)));
     }
 
     @Override

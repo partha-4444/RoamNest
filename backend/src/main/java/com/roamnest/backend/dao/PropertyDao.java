@@ -13,6 +13,9 @@ public interface PropertyDao {
 
     List<PropertyRecord> findAvailable();
 
+    /** Returns properties owned by one owner, including unavailable listings. */
+    List<PropertyRecord> findByOwnerId(Long ownerId);
+
     /** Filtered search with optional location, price, guest capacity, and date filters. */
     List<PropertyRecord> search(PropertySearchCriteria criteria);
 

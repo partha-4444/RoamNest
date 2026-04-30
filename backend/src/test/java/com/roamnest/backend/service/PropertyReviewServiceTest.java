@@ -6,6 +6,7 @@ import com.roamnest.backend.dao.PropertyReviewDao;
 import com.roamnest.backend.dao.UserDao;
 import com.roamnest.backend.dto.CreateReviewRequest;
 import com.roamnest.backend.dto.PropertyReviewResponse;
+import com.roamnest.backend.dto.UserReviewResponse;
 import com.roamnest.backend.model.BookingRecord;
 import com.roamnest.backend.model.PropertyReviewRecord;
 import com.roamnest.backend.model.UserAccount;
@@ -20,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -151,6 +153,32 @@ class PropertyReviewServiceTest {
 
         assertNull(response.getComment());
         assertEquals(3, response.getRating());
+    }
+
+    @Test
+    void listReviewsWrittenRequiresUserRole() {
+        when(userDao.findByUsername("owner@example.com")).thenReturn(Optional.of(user(5L, "OWNER")));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+            () -> propertyReviewService.listReviewsWrittenByCurrentUser("owner@example.com"));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verify(reviewDao, never()).findByUserId(any());
+    }
+
+    @Test
+    void listReviewsWrittenReturnsCurrentUsersReviews() {
+        UserReviewResponse review = new UserReviewResponse(
+            77L, 1L, 10L, "Lake House", "Pokhara", 5, "Loved it", OffsetDateTime.now());
+        when(userDao.findByUsername("user@example.com")).thenReturn(Optional.of(user(20L, "USER")));
+        when(reviewDao.findByUserId(20L)).thenReturn(List.of(review));
+
+        List<UserReviewResponse> reviews = propertyReviewService.listReviewsWrittenByCurrentUser("user@example.com");
+
+        assertEquals(1, reviews.size());
+        assertEquals("Lake House", reviews.get(0).getPropertyTitle());
+        assertEquals(5, reviews.get(0).getRating());
+        verify(reviewDao).findByUserId(20L);
     }
 
     private CreateReviewRequest reviewRequest(int rating, String comment) {

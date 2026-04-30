@@ -66,6 +66,12 @@ public class PropertyService {
         return attachSummariesAndMap(properties);
     }
 
+    public List<PropertyResponse> listOwnedProperties(String username) {
+        UserAccount owner = getCurrentUser(username);
+        requireRole(owner, ROLE_OWNER, "Only owners can view their properties");
+        return attachSummariesAndMap(propertyDao.findByOwnerId(owner.getId()));
+    }
+
     /**
      * Unified search/filter endpoint — all params are optional.
      * Accessible to USER and OWNER roles.

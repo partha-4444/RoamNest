@@ -48,6 +48,11 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.listAvailableProperties(authentication.getName()));
     }
 
+    @GetMapping("/mine")
+    public ResponseEntity<List<PropertyResponse>> listMyProperties(Authentication authentication) {
+        return ResponseEntity.ok(propertyService.listOwnedProperties(authentication.getName()));
+    }
+
     /**
      * Filtered search — all parameters are optional.
      * Sorting: newest (default), price_asc, price_desc.

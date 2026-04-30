@@ -25,8 +25,12 @@ export default function Home({ role, username, onLogout }) {
   };
 
   useEffect(() => {
-    if (isUser || isOwner) {
+    setProperties([]);
+    if (isUser) {
       api.get('/properties').then(r => setProperties(r.data)).catch(() => {});
+    }
+    if (isOwner) {
+      api.get('/properties/mine').then(r => setProperties(r.data)).catch(() => {});
     }
     if (isAdmin) {
       api.get('/admin/summary').then(r => setSummary(r.data)).catch(() => {});
@@ -86,8 +90,8 @@ export default function Home({ role, username, onLogout }) {
       {/* Dynamic Content based on RBAC */}
       <main style={styles.mainContent}>
         
-        {/* USER / OWNER: Available Properties */}
-        {(isUser || isOwner) && (
+        {/* USER: Available Properties */}
+        {isUser && (
           <section>
             <div style={{...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <h2>Available Stays</h2>
@@ -147,7 +151,7 @@ export default function Home({ role, username, onLogout }) {
 
         {/* OWNER Dashboard */}
         {isOwner && (
-          <section style={styles.rbacSection}>
+          <section>
             <h2 style={{color: '#fcd34d'}}>Owner Dashboard</h2>
             <div className="glass-panel" style={styles.actionPanel}>
               <div style={styles.actionItem}>
@@ -182,6 +186,50 @@ export default function Home({ role, username, onLogout }) {
                 </button>
               </div>
             </div>
+          </section>
+        )}
+
+        {/* OWNER: Owned Properties */}
+        {isOwner && (
+          <section style={styles.rbacSection}>
+            <div style={{...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <h2>Your Properties</h2>
+              <button
+                onClick={() => navigate('/owner/properties/new')}
+                style={{background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600}}
+              >
+                Add Property
+              </button>
+            </div>
+            {properties.length === 0 ? (
+              <p style={{color: 'var(--text-muted)'}}>You have not listed any properties yet.</p>
+            ) : (
+              <div style={styles.propertyGrid}>
+                {properties.slice(0, 8).map(p => (
+                  <div
+                    key={p.id}
+                    className="glass-panel"
+                    style={styles.propertyCard}
+                    onClick={() => navigate(`/properties/${p.id}`, { state: { property: p } })}
+                  >
+                    <div style={{...styles.propertyImage, backgroundImage: `url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)`}} />
+                    <div style={styles.propertyInfo}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h3 style={{fontSize: '15px', margin: 0}}>{p.title}</h3>
+                        {p.reviewSummary?.reviewCount > 0 && (
+                          <span style={{fontSize: '13px'}}>★ {p.reviewSummary.averageRating.toFixed(1)}</span>
+                        )}
+                      </div>
+                      <p style={{color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0'}}>{p.location}</p>
+                      <p style={{margin: '6px 0 0', fontWeight: 'bold'}}>${p.pricePerNight} <span style={{fontWeight: 'normal', color: 'var(--text-muted)'}}>/ night</span></p>
+                      <p style={{fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0'}}>
+                        Up to {p.maxGuests} guests · {p.available ? 'Available' : 'Unavailable'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
 

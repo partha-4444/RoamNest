@@ -91,6 +91,18 @@ public class JdbcPropertyDao implements PropertyDao {
     }
 
     @Override
+    public List<PropertyRecord> findByOwnerId(Long ownerId) {
+        String sql = """
+            select id, owner_id, title, description, location, address, price_per_night,
+                   max_guests, available, created_at, updated_at
+            from rn_properties
+            where owner_id = :ownerId
+            order by created_at desc, id desc
+            """;
+        return jdbcTemplate.query(sql, new MapSqlParameterSource("ownerId", ownerId), PROPERTY_ROW_MAPPER);
+    }
+
+    @Override
     @Deprecated
     public List<PropertyRecord> searchAvailableByLocation(String location) {
         PropertySearchCriteria criteria = new PropertySearchCriteria(

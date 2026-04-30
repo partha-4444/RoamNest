@@ -1,6 +1,7 @@
 package com.roamnest.backend.dao;
 
 import com.roamnest.backend.dto.ReviewSummary;
+import com.roamnest.backend.dto.UserReviewResponse;
 import com.roamnest.backend.model.PropertyReviewRecord;
 
 import java.util.List;
@@ -15,6 +16,8 @@ public interface PropertyReviewDao {
     boolean existsByBookingId(Long bookingId);
 
     List<PropertyReviewRecord> findByPropertyId(Long propertyId);
+
+    List<UserReviewResponse> findByUserId(Long userId);
 
     /** Single property aggregate — averageRating is 0.0 and reviewCount is 0 when no reviews exist. */
     ReviewSummary findSummaryByPropertyId(Long propertyId);

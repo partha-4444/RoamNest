@@ -147,6 +147,33 @@ class PropertyServiceTest {
         assertEquals(0, results.get(1).getReviewSummary().getReviewCount());
     }
 
+    @Test
+    void listOwnedPropertiesRequiresOwnerRole() {
+        when(userDao.findByUsername("user@example.com")).thenReturn(Optional.of(user(2L, "USER")));
+
+        ResponseStatusException exception = assertThrows(
+            ResponseStatusException.class,
+            () -> propertyService.listOwnedProperties("user@example.com"));
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verify(propertyDao, never()).findByOwnerId(any());
+    }
+
+    @Test
+    void listOwnedPropertiesReturnsOnlyCurrentOwnersProperties() {
+        when(userDao.findByUsername("owner@example.com")).thenReturn(Optional.of(user(5L, "OWNER")));
+        when(propertyDao.findByOwnerId(5L)).thenReturn(List.of(property(10L, 5L), property(11L, 5L)));
+        when(reviewDao.findSummariesForPropertyIds(List.of(10L, 11L)))
+            .thenReturn(Map.of(10L, new ReviewSummary(4.5, 4)));
+
+        List<PropertyResponse> results = propertyService.listOwnedProperties("owner@example.com");
+
+        assertEquals(2, results.size());
+        assertEquals(5L, results.get(0).getOwnerId());
+        assertEquals(4, results.get(0).getReviewSummary().getReviewCount());
+        verify(propertyDao).findByOwnerId(5L);
+    }
+
     private CreatePropertyRequest createPropertyRequest() {
         CreatePropertyRequest request = new CreatePropertyRequest();
         request.setTitle("Lake House");

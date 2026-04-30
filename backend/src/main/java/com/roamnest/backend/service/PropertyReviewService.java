@@ -6,6 +6,7 @@ import com.roamnest.backend.dao.PropertyReviewDao;
 import com.roamnest.backend.dao.UserDao;
 import com.roamnest.backend.dto.CreateReviewRequest;
 import com.roamnest.backend.dto.PropertyReviewResponse;
+import com.roamnest.backend.dto.UserReviewResponse;
 import com.roamnest.backend.model.BookingRecord;
 import com.roamnest.backend.model.PropertyReviewRecord;
 import com.roamnest.backend.model.UserAccount;
@@ -88,6 +89,12 @@ public class PropertyReviewService {
             .stream()
             .map(this::toResponse)
             .toList();
+    }
+
+    public List<UserReviewResponse> listReviewsWrittenByCurrentUser(String username) {
+        UserAccount user = getCurrentUser(username);
+        requireRole(user, ROLE_USER, "Only users can view reviews they have written");
+        return reviewDao.findByUserId(user.getId());
     }
 
     private UserAccount getCurrentUser(String username) {

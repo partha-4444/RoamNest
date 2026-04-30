@@ -189,12 +189,36 @@ values ('USER_DETAILS', '/api/users/details', 'GET', false)
 on conflict (name) do nothing;
 
 insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('USERS_ME', '/api/users/me', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('USER_REVIEWS_ME', '/api/users/me/reviews', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
 values ('PROPERTIES_CREATE', '/api/properties', 'POST', false)
 on conflict (name) do nothing;
 
 insert into rn_api_objects(name, path_pattern, http_method, is_public)
 values ('PROPERTIES_LIST', '/api/properties', 'GET', false)
 on conflict (name) do nothing;
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('PROPERTIES_MINE', '/api/properties/mine', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
 
 insert into rn_api_objects(name, path_pattern, http_method, is_public)
 values ('PROPERTIES_SEARCH', '/api/properties/search', 'GET', false)
@@ -247,14 +271,21 @@ on conflict (role_id, api_object_id) do nothing;
 insert into rn_role_api_privileges(role_id, api_object_id)
 select r.id, a.id
 from rn_roles r
-join rn_api_objects a on a.name in ('PROPERTIES_CREATE', 'BOOKINGS_APPROVE', 'BOOKINGS_REJECT')
+join rn_api_objects a on a.name in ('USERS_ME', 'AUTH_LOGOUT')
+where r.name in ('ADMIN', 'OWNER', 'USER')
+on conflict (role_id, api_object_id) do nothing;
+
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name in ('PROPERTIES_CREATE', 'PROPERTIES_MINE', 'BOOKINGS_APPROVE', 'BOOKINGS_REJECT')
 where r.name = 'OWNER'
 on conflict (role_id, api_object_id) do nothing;
 
 insert into rn_role_api_privileges(role_id, api_object_id)
 select r.id, a.id
 from rn_roles r
-join rn_api_objects a on a.name in ('PROPERTIES_LIST', 'PROPERTIES_SEARCH', 'BOOKINGS_CREATE')
+join rn_api_objects a on a.name in ('PROPERTIES_LIST', 'PROPERTIES_SEARCH', 'BOOKINGS_CREATE', 'USER_REVIEWS_ME')
 where r.name = 'USER'
 on conflict (role_id, api_object_id) do nothing;
 
