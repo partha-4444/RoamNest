@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+const encodePasswordForLogin = (value) => {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return `base64:${btoa(binary)}`;
+};
 
 export default function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,25 +24,18 @@ export default function Login({ onLogin }) {
     setError('');
 
     try {
-      // Base64 encode credentials for Basic Auth
-      const token = btoa(`${username}:${password}`);
-      const response = await axios.post('http://localhost:8080/api/login', {}, {
-        headers: {
-          'Authorization': `Basic ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const response = await axios.post('http://localhost:8080/api/auth/login', {
+        username,
+        password: encodePasswordForLogin(password),
       });
-
-      if (response.data.status === 'success') {
-        onLogin(response.data.role, response.data.username);
-      } else {
-        setError('Invalid credentials');
-      }
+      const { token, role, username: user } = response.data;
+      sessionStorage.setItem('rn_auth', JSON.stringify({ token, role, username: user }));
+      onLogin(role, user);
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-         setError('Invalid username or password');
+      if (err.response?.status === 401) {
+        setError('Invalid username or password');
       } else {
-         setError('Server error. Ensure backend is running.');
+        setError('Server error. Ensure the backend is running.');
       }
     } finally {
       setLoading(false);
@@ -84,6 +88,9 @@ export default function Login({ onLogin }) {
           Demo Accounts: <br />
           <b>admin / admin</b> | <b>owner / owner</b> | <b>user / user</b>
         </div>
+        <button onClick={() => navigate('/signup')} style={styles.signupLink}>
+          New to RoamNest? Create an account
+        </button>
       </div>
     </div>
   );
@@ -173,5 +180,13 @@ const styles = {
     color: 'rgba(255,255,255,0.4)',
     textAlign: 'center',
     lineHeight: '1.6'
+  },
+  signupLink: {
+    marginTop: '16px',
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--primary)',
+    fontWeight: 700,
+    cursor: 'pointer'
   }
 };

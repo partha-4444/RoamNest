@@ -56,7 +56,7 @@ public class BookingMessageService {
         }
 
         return messageDao.findById(messageId)
-            .map(this::toResponse)
+            .map(msg -> toResponse(msg, booking))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Sent message not found"));
     }
 
@@ -67,7 +67,7 @@ public class BookingMessageService {
 
         return messageDao.findByBookingId(bookingId)
             .stream()
-            .map(this::toResponse)
+            .map(msg -> toResponse(msg, booking))
             .toList();
     }
 
@@ -108,11 +108,19 @@ public class BookingMessageService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
-    private BookingMessageResponse toResponse(BookingMessageRecord record) {
+    /**
+     * Computes sender role label without exposing raw user IDs.
+     * "GUEST" means the booking guest sent the message; "OWNER" means the property owner did.
+     */
+    private String computeSenderRole(BookingMessageRecord message, BookingRecord booking) {
+        return message.getSenderId().equals(booking.getUserId()) ? "GUEST" : "OWNER";
+    }
+
+    private BookingMessageResponse toResponse(BookingMessageRecord record, BookingRecord booking) {
         return new BookingMessageResponse(
             record.getId(),
             record.getBookingId(),
-            record.getSenderId(),
+            computeSenderRole(record, booking),
             record.getMessage(),
             record.getCreatedAt());
     }

@@ -1,6 +1,7 @@
 package com.roamnest.backend.dao.impl;
 
 import com.roamnest.backend.dao.PropertyDao;
+import com.roamnest.backend.dto.PropertySearchCriteria;
 import com.roamnest.backend.model.PropertyRecord;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -90,18 +91,72 @@ public class JdbcPropertyDao implements PropertyDao {
     }
 
     @Override
+    @Deprecated
     public List<PropertyRecord> searchAvailableByLocation(String location) {
-        String sql = """
+        PropertySearchCriteria criteria = new PropertySearchCriteria(
+            location, null, null, null, null, null, null);
+        return search(criteria);
+    }
+
+    @Override
+    public List<PropertyRecord> search(PropertySearchCriteria criteria) {
+        StringBuilder sql = new StringBuilder("""
             select id, owner_id, title, description, location, address, price_per_night,
                    max_guests, available, created_at, updated_at
             from rn_properties
             where available = true
-              and lower(location) like lower('%' || :location || '%')
+            """);
+        MapSqlParameterSource params = new MapSqlParameterSource();
+
+        if (criteria.getLocation() != null && !criteria.getLocation().isBlank()) {
+            sql.append(" and lower(location) like lower('%' || :location || '%')");
+            params.addValue("location", criteria.getLocation().trim());
+        }
+        if (criteria.getMinPrice() != null) {
+            sql.append(" and price_per_night >= :minPrice");
+            params.addValue("minPrice", criteria.getMinPrice());
+        }
+        if (criteria.getMaxPrice() != null) {
+            sql.append(" and price_per_night <= :maxPrice");
+            params.addValue("maxPrice", criteria.getMaxPrice());
+        }
+        if (criteria.getMinGuests() != null) {
+            sql.append(" and max_guests >= :minGuests");
+            params.addValue("minGuests", criteria.getMinGuests());
+        }
+        if (criteria.hasDateFilter()) {
+            sql.append("""
+                 and id not in (
+                     select property_id from rn_bookings
+                     where status = 'APPROVED'
+                       and check_in_date < :checkOutDate
+                       and check_out_date > :checkInDate
+                 )
+                """);
+            params.addValue("checkInDate", criteria.getCheckInDate());
+            params.addValue("checkOutDate", criteria.getCheckOutDate());
+        }
+
+        String sort = criteria.getSort();
+        if ("price_asc".equalsIgnoreCase(sort)) {
+            sql.append(" order by price_per_night asc, created_at desc, id desc");
+        } else if ("price_desc".equalsIgnoreCase(sort)) {
+            sql.append(" order by price_per_night desc, created_at desc, id desc");
+        } else {
+            sql.append(" order by created_at desc, id desc");
+        }
+
+        return jdbcTemplate.query(sql.toString(), params, PROPERTY_ROW_MAPPER);
+    }
+
+    @Override
+    public List<PropertyRecord> findAll() {
+        String sql = """
+            select id, owner_id, title, description, location, address, price_per_night,
+                   max_guests, available, created_at, updated_at
+            from rn_properties
             order by created_at desc, id desc
             """;
-        return jdbcTemplate.query(
-            sql,
-            new MapSqlParameterSource("location", location),
-            PROPERTY_ROW_MAPPER);
+        return jdbcTemplate.query(sql, PROPERTY_ROW_MAPPER);
     }
 }

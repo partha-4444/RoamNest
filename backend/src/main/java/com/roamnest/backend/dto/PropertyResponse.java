@@ -13,6 +13,7 @@ public class PropertyResponse {
     private final BigDecimal pricePerNight;
     private final Integer maxGuests;
     private final boolean available;
+    private final ReviewSummary reviewSummary;
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
 
@@ -25,6 +26,7 @@ public class PropertyResponse {
                             BigDecimal pricePerNight,
                             Integer maxGuests,
                             boolean available,
+                            ReviewSummary reviewSummary,
                             OffsetDateTime createdAt,
                             OffsetDateTime updatedAt) {
         this.id = id;
@@ -36,6 +38,7 @@ public class PropertyResponse {
         this.pricePerNight = pricePerNight;
         this.maxGuests = maxGuests;
         this.available = available;
+        this.reviewSummary = reviewSummary;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -74,6 +77,10 @@ public class PropertyResponse {
 
     public boolean isAvailable() {
         return available;
+    }
+
+    public ReviewSummary getReviewSummary() {
+        return reviewSummary;
     }
 
     public OffsetDateTime getCreatedAt() {

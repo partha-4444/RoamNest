@@ -257,3 +257,67 @@ from rn_roles r
 join rn_api_objects a on a.name = 'PROPERTY_REVIEWS_LIST'
 where r.name in ('USER', 'OWNER')
 on conflict (role_id, api_object_id) do nothing;
+
+-- -----------------------------------------------------------------------
+-- Admin domain endpoints
+-- -----------------------------------------------------------------------
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('ADMIN_SUMMARY', '/api/admin/summary', 'GET', false)
+on conflict (name) do nothing;
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('ADMIN_USERS', '/api/admin/users', 'GET', false)
+on conflict (name) do nothing;
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('ADMIN_PROPERTIES', '/api/admin/properties', 'GET', false)
+on conflict (name) do nothing;
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('ADMIN_BOOKINGS', '/api/admin/bookings', 'GET', false)
+on conflict (name) do nothing;
+
+-- Owner booking queue (privacy-preserving, no guest identity)
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('OWNER_BOOKINGS_LIST', '/api/bookings/owner', 'GET', false)
+on conflict (name) do nothing;
+
+-- Grant all new admin endpoints exclusively to ADMIN
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name in ('ADMIN_SUMMARY', 'ADMIN_USERS', 'ADMIN_PROPERTIES', 'ADMIN_BOOKINGS')
+where r.name = 'ADMIN'
+on conflict (role_id, api_object_id) do nothing;
+
+-- Grant owner booking list to OWNER only
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name = 'OWNER_BOOKINGS_LIST'
+where r.name = 'OWNER'
+on conflict (role_id, api_object_id) do nothing;
+
+-- Allow OWNER to also browse available property listings (and search with filters)
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name in ('PROPERTIES_LIST', 'PROPERTIES_SEARCH')
+where r.name = 'OWNER'
+on conflict (role_id, api_object_id) do nothing;
+
+-- API object for current user's bookings
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('BOOKINGS_ME', '/api/bookings/me', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+-- Grant USER access to /api/bookings/me
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name = 'BOOKINGS_ME'
+where r.name = 'USER'
+on conflict (role_id, api_object_id) do nothing;

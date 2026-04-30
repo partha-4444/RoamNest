@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
 
@@ -22,6 +24,7 @@ public class AuthService {
     private static final String ROLE_ADMIN = "ADMIN";
     private static final String ROLE_OWNER = "OWNER";
     private static final String ROLE_USER = "USER";
+    private static final String BASE64_PASSWORD_PREFIX = "base64:";
 
     private final UserDao userDao;
     private final TokenDao tokenDao;
@@ -76,7 +79,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account disabled");
         }
 
-        boolean passwordMatches = passwordEncoder.matches(request.getPassword(), user.getPassword());
+        boolean passwordMatches = passwordEncoder.matches(decodeLoginPassword(request.getPassword()), user.getPassword());
         if (!passwordMatches) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid username or password");
         }
@@ -88,6 +91,18 @@ public class AuthService {
         tokenDao.saveToken(user.getId(), token, expiresAt);
 
         return new AuthResponse(token, user.getUsername(), user.getRole(), "Login successful");
+    }
+
+    private String decodeLoginPassword(String password) {
+        if (password == null || !password.startsWith(BASE64_PASSWORD_PREFIX)) {
+            return password;
+        }
+        try {
+            byte[] decoded = Base64.getDecoder().decode(password.substring(BASE64_PASSWORD_PREFIX.length()));
+            return new String(decoded, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ex) {
+            return password;
+        }
     }
 
     @Transactional

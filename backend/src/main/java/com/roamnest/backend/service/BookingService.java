@@ -6,7 +6,10 @@ import com.roamnest.backend.dao.UserDao;
 import com.roamnest.backend.dto.BookingDecisionRequest;
 import com.roamnest.backend.dto.BookingResponse;
 import com.roamnest.backend.dto.CreateBookingRequest;
+import com.roamnest.backend.dto.MyBookingResponse;
+import com.roamnest.backend.dto.OwnerBookingResponse;
 import com.roamnest.backend.model.BookingRecord;
+import com.roamnest.backend.model.OwnerBookingRecord;
 import com.roamnest.backend.model.PropertyRecord;
 import com.roamnest.backend.model.UserAccount;
 import org.springframework.http.HttpStatus;
@@ -15,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class BookingService {
@@ -22,6 +26,7 @@ public class BookingService {
     private static final String ROLE_OWNER = "OWNER";
     private static final String ROLE_USER = "USER";
     private static final String STATUS_PENDING = "PENDING";
+    private static final String STATUS_APPROVED = "APPROVED";
 
     private final BookingDao bookingDao;
     private final PropertyDao propertyDao;
@@ -72,12 +77,12 @@ public class BookingService {
         }
 
         return bookingDao.findById(bookingId)
-            .map(this::toResponse)
+            .map(this::toGuestResponse)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Created booking not found"));
     }
 
     @Transactional
-    public BookingResponse approveBooking(String username, Long bookingId, BookingDecisionRequest request) {
+    public OwnerBookingResponse approveBooking(String username, Long bookingId, BookingDecisionRequest request) {
         UserAccount owner = getCurrentUser(username);
         requireRole(owner, ROLE_OWNER, "Only owners can approve bookings");
 
@@ -96,13 +101,13 @@ public class BookingService {
         }
 
         bookingDao.approve(bookingId, owner.getId(), getDecisionNote(request));
-        return bookingDao.findById(bookingId)
-            .map(this::toResponse)
+        return bookingDao.findOwnerBookingById(bookingId)
+            .map(this::toOwnerResponse)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
     }
 
     @Transactional
-    public BookingResponse rejectBooking(String username, Long bookingId, BookingDecisionRequest request) {
+    public OwnerBookingResponse rejectBooking(String username, Long bookingId, BookingDecisionRequest request) {
         UserAccount owner = getCurrentUser(username);
         requireRole(owner, ROLE_OWNER, "Only owners can reject bookings");
 
@@ -111,9 +116,37 @@ public class BookingService {
         requirePending(booking);
 
         bookingDao.reject(bookingId, owner.getId(), getDecisionNote(request));
-        return bookingDao.findById(bookingId)
-            .map(this::toResponse)
+        return bookingDao.findOwnerBookingById(bookingId)
+            .map(this::toOwnerResponse)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+    }
+
+    /**
+     * Lists bookings for properties owned by this owner, optionally filtered by status.
+     * Guest identity is included only after approval.
+     *
+     * @param status optional; null/blank returns all statuses
+     */
+    public List<OwnerBookingResponse> listOwnerBookings(String username, String status) {
+        UserAccount owner = getCurrentUser(username);
+        requireRole(owner, ROLE_OWNER, "Only owners can view their booking requests");
+
+        String normalizedStatus = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        return bookingDao.findByOwnerIdAndStatus(owner.getId(), normalizedStatus)
+            .stream()
+            .map(this::toOwnerResponse)
+            .toList();
+    }
+
+    public List<MyBookingResponse> listMyBookings(String username, String status) {
+        UserAccount user = getCurrentUser(username);
+        requireRole(user, ROLE_USER, "Only users can view their bookings");
+
+        String normalizedStatus = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+        return bookingDao.findByUserIdAndStatus(user.getId(), normalizedStatus)
+            .stream()
+            .map(this::toMyBookingResponse)
+            .toList();
     }
 
     private BookingRecord getBooking(Long bookingId) {
@@ -160,7 +193,7 @@ public class BookingService {
         return request.getOwnerDecisionNote().trim();
     }
 
-    private BookingResponse toResponse(BookingRecord booking) {
+    private BookingResponse toGuestResponse(BookingRecord booking) {
         return new BookingResponse(
             booking.getId(),
             booking.getPropertyId(),
@@ -174,5 +207,46 @@ public class BookingService {
             booking.getDecidedAt(),
             booking.getCreatedAt(),
             booking.getUpdatedAt());
+    }
+
+    private OwnerBookingResponse toOwnerResponse(OwnerBookingRecord rec) {
+        // guestRef is deterministic and opaque — hides guest identity from owner
+        String guestRef = "RN-" + rec.getId();
+        boolean canSeeGuestDetails = STATUS_APPROVED.equals(rec.getStatus());
+        return new OwnerBookingResponse(
+            rec.getId(),
+            guestRef,
+            canSeeGuestDetails ? rec.getGuestUserId() : null,
+            canSeeGuestDetails ? rec.getGuestFullName() : null,
+            canSeeGuestDetails ? rec.getGuestUsername() : null,
+            canSeeGuestDetails ? rec.getGuestPhoneNo() : null,
+            canSeeGuestDetails ? rec.getGuestAddress() : null,
+            rec.getPropertyId(),
+            rec.getPropertyTitle(),
+            rec.getPropertyLocation(),
+            rec.getCheckInDate(),
+            rec.getCheckOutDate(),
+            rec.getGuests(),
+            rec.getStatus(),
+            rec.getOwnerDecisionNote(),
+            rec.getDecidedAt(),
+            rec.getCreatedAt(),
+            rec.getUpdatedAt());
+    }
+
+    private MyBookingResponse toMyBookingResponse(OwnerBookingRecord rec) {
+        return new MyBookingResponse(
+            rec.getId(),
+            rec.getPropertyId(),
+            rec.getPropertyTitle(),
+            rec.getPropertyLocation(),
+            rec.getCheckInDate(),
+            rec.getCheckOutDate(),
+            rec.getGuests(),
+            rec.getStatus(),
+            rec.getOwnerDecisionNote(),
+            rec.getDecidedAt(),
+            rec.getCreatedAt(),
+            rec.getUpdatedAt());
     }
 }

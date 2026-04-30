@@ -1,16 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BurgerMenu from '../components/BurgerMenu';
+import api from '../api';
 
 export default function Home({ role, username, onLogout }) {
-  const [activeTab, setActiveTab] = useState('explore');
+  const [properties, setProperties] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [pendingCount, setPendingCount] = useState(null);
   const navigate = useNavigate();
 
-  // RBAC rendering helpers
   const isAdmin = role === 'ADMIN';
   const isOwner = role === 'OWNER';
   const isUser  = role === 'USER';
-  
+
+  useEffect(() => {
+    if (isUser || isOwner) {
+      api.get('/properties').then(r => setProperties(r.data)).catch(() => {});
+    }
+    if (isAdmin) {
+      api.get('/admin/summary').then(r => setSummary(r.data)).catch(() => {});
+    }
+    if (isOwner) {
+      api.get('/bookings/owner', { params: { status: 'PENDING' } })
+        .then(r => setPendingCount(r.data.length))
+        .catch(() => {});
+    }
+  }, [role]);
+
   return (
     <div style={styles.container}>
       {/* Navigation Bar */}
@@ -21,18 +37,6 @@ export default function Home({ role, username, onLogout }) {
           </div>
           <span style={styles.navTitle}>RoamNest</span>
         </div>
-        
-        <div style={styles.navCenter}>
-          <span style={styles.searchPill}>
-            <span>Anywhere</span> <span style={styles.pillDivider}></span>
-            <span>Any week</span> <span style={styles.pillDivider}></span>
-            <span style={{color: 'var(--text-muted)'}}>Add guests</span>
-            <div style={styles.searchIcon}>
-               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style={{display: 'block', fill: 'none', height: '12px', width: '12px', stroke: 'currentcolor', strokeWidth: '5.33333', overflow: 'visible'}}><g fill="none"><path d="m13 24c6.0751322 0 11-4.9248678 11-11 0-6.07513225-4.9248678-11-11-11-6.07513225 0-11 4.92486775-11 11 0 6.0751322 4.92486775 11 11 11zm8-3 9 9"></path></g></svg>
-            </div>
-          </span>
-        </div>
-
         <div style={styles.navRight}>
           {isUser ? (
             // USER: pill button → profile + burger menu with full nav
@@ -71,64 +75,116 @@ export default function Home({ role, username, onLogout }) {
       {/* Dynamic Content based on RBAC */}
       <main style={styles.mainContent}>
         
-        {/* User View (Everyone sees properties) */}
-        <section>
-          <div style={styles.sectionHeader}>
-            <h2>Featured Stays</h2>
-          </div>
-          <div style={styles.propertyGrid}>
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="glass-panel" style={styles.propertyCard}>
-                <div style={{...styles.propertyImage, backgroundImage: `url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80)`}}></div>
-                <div style={styles.propertyInfo}>
-                  <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                    <h3 style={{fontSize: '16px', margin: 0}}>Modern Retreat, NY</h3>
-                    <span>★ 4.9</span>
+        {/* USER / OWNER: Available Properties */}
+        {(isUser || isOwner) && (
+          <section>
+            <div style={{...styles.sectionHeader, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <h2>Available Stays</h2>
+              <button
+                onClick={() => navigate('/properties')}
+                style={{background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '6px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600}}
+              >
+                Search &amp; Filter
+              </button>
+            </div>
+            {properties.length === 0 ? (
+              <p style={{color: 'var(--text-muted)'}}>No available properties right now.</p>
+            ) : (
+              <div style={styles.propertyGrid}>
+                {properties.slice(0, 8).map(p => (
+                  <div
+                    key={p.id}
+                    className="glass-panel"
+                    style={styles.propertyCard}
+                    onClick={() => navigate(`/properties/${p.id}`, { state: { property: p } })}
+                  >
+                    <div style={{...styles.propertyImage, backgroundImage: `url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)`}} />
+                    <div style={styles.propertyInfo}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h3 style={{fontSize: '15px', margin: 0}}>{p.title}</h3>
+                        {p.reviewSummary?.reviewCount > 0 && (
+                          <span style={{fontSize: '13px'}}>★ {p.reviewSummary.averageRating.toFixed(1)}</span>
+                        )}
+                      </div>
+                      <p style={{color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0'}}>{p.location}</p>
+                      <p style={{margin: '6px 0 0', fontWeight: 'bold'}}>${p.pricePerNight} <span style={{fontWeight: 'normal', color: 'var(--text-muted)'}}>/ night</span></p>
+                      <p style={{fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0'}}>Up to {p.maxGuests} guests</p>
+                    </div>
                   </div>
-                  <p style={{color: 'var(--text-muted)', fontSize: '14px', margin: '4px 0'}}>2,300 kilometers away</p>
-                  <p style={{margin: '8px 0 0', fontWeight: 'bold'}}>$120 <span style={{fontWeight: 'normal', color: 'var(--text-muted)'}}>night</span></p>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            )}
+          </section>
+        )}
 
-        {/* Owner View Components */}
+        {/* OWNER Dashboard */}
         {isOwner && (
           <section style={styles.rbacSection}>
             <h2 style={{color: '#fcd34d'}}>Owner Dashboard</h2>
             <div className="glass-panel" style={styles.actionPanel}>
               <div style={styles.actionItem}>
                 <h3>+ Add New Property</h3>
-                <p>List a new home for guests.</p>
-                <button className="btn-primary" style={{marginTop:'10px'}}>Create Listing</button>
+                <p>List a new home for guests to discover.</p>
+                <button className="btn-primary" style={{marginTop: '10px'}} onClick={() => navigate('/owner/properties/new')}>
+                  Create Listing
+                </button>
               </div>
               <div style={styles.actionItem}>
-                <h3>Pending Bookings</h3>
-                <p>You have 3 requests waiting.</p>
-                <button className="btn-primary" style={{marginTop:'10px', background: 'transparent', border:'1px solid var(--primary)', color:'var(--primary)'}}>View Requests</button>
+                <h3>Booking Requests</h3>
+                <p>
+                  {pendingCount === null
+                    ? 'Loading...'
+                    : pendingCount > 0
+                      ? `${pendingCount} pending request${pendingCount > 1 ? 's' : ''} awaiting your decision.`
+                      : 'No pending requests right now.'}
+                </p>
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate('/owner/bookings')}
+                  style={{marginTop: '10px', background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)'}}
+                >
+                  View Requests
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate('/messages')}
+                  style={{marginTop: '10px', marginLeft: '10px', background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', boxShadow: 'none'}}
+                >
+                  Messages
+                </button>
               </div>
             </div>
           </section>
         )}
 
-        {/* Admin View Components */}
+        {/* ADMIN Dashboard */}
         {isAdmin && (
           <section style={styles.rbacSection}>
             <h2 style={{color: '#38bdf8'}}>Platform Administration</h2>
             <div className="glass-panel" style={{...styles.actionPanel, gridTemplateColumns: 'repeat(3, 1fr)'}}>
               <div style={styles.actionItem}>
-                <h3>User Management</h3>
-                <p>1,240 active users</p>
+                <h3>Users</h3>
+                {summary
+                  ? <><p style={{fontSize: '24px', fontWeight: 700, margin: '8px 0'}}>{summary.adminCount + summary.ownerCount + summary.userCount}</p><p style={{color: 'var(--text-muted)', fontSize: '13px'}}>{summary.ownerCount} owners · {summary.userCount} guests</p></>
+                  : <p style={{color: 'var(--text-muted)'}}>Loading…</p>}
               </div>
               <div style={styles.actionItem}>
-                <h3>Review Listings</h3>
-                <p>12 listings pending approval</p>
+                <h3>Properties</h3>
+                {summary
+                  ? <><p style={{fontSize: '24px', fontWeight: 700, margin: '8px 0'}}>{summary.totalProperties}</p><p style={{color: 'var(--text-muted)', fontSize: '13px'}}>{summary.availableProperties} available</p></>
+                  : <p style={{color: 'var(--text-muted)'}}>Loading…</p>}
               </div>
               <div style={styles.actionItem}>
-                <h3>System Status</h3>
-                <p>All services operational ✓</p>
+                <h3>Bookings</h3>
+                {summary
+                  ? <><p style={{fontSize: '24px', fontWeight: 700, margin: '8px 0'}}>{summary.pendingBookings + summary.approvedBookings + summary.rejectedBookings}</p><p style={{color: 'var(--text-muted)', fontSize: '13px'}}>{summary.pendingBookings} pending · ★ {summary.overallAverageRating.toFixed(1)} avg</p></>
+                  : <p style={{color: 'var(--text-muted)'}}>Loading…</p>}
               </div>
+            </div>
+            <div style={{marginTop: '16px', display: 'flex', gap: '12px'}}>
+              <button className="btn-primary" onClick={() => navigate('/admin')} style={{padding: '8px 20px'}}>
+                Full Admin Dashboard →
+              </button>
             </div>
           </section>
         )}
@@ -167,36 +223,6 @@ const styles = {
     fontSize: '20px',
     fontWeight: '800',
     color: 'var(--primary)',
-  },
-  navCenter: {
-    flex: 1,
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  searchPill: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '16px',
-    padding: '8px 8px 8px 24px',
-    border: '1px solid var(--glass-border)',
-    borderRadius: '40px',
-    background: 'rgba(15, 23, 42, 0.4)',
-    fontSize: '14px',
-    fontWeight: 600,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    cursor: 'pointer',
-    transition: 'box-shadow 0.2s'
-  },
-  pillDivider: {
-    height: '24px',
-    width: '1px',
-    backgroundColor: 'var(--glass-border)'
-  },
-  searchIcon: {
-    background: 'var(--primary)',
-    color: 'white',
-    padding: '10px',
-    borderRadius: '50%'
   },
   navRight: {
     display: 'flex',

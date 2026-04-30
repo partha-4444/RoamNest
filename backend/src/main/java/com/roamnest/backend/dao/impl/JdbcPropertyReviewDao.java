@@ -1,6 +1,7 @@
 package com.roamnest.backend.dao.impl;
 
 import com.roamnest.backend.dao.PropertyReviewDao;
+import com.roamnest.backend.dto.ReviewSummary;
 import com.roamnest.backend.model.PropertyReviewRecord;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -9,7 +10,10 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -91,5 +95,41 @@ public class JdbcPropertyReviewDao implements PropertyReviewDao {
             sql,
             new MapSqlParameterSource("propertyId", propertyId),
             REVIEW_ROW_MAPPER);
+    }
+
+    @Override
+    public ReviewSummary findSummaryByPropertyId(Long propertyId) {
+        String sql = """
+            select coalesce(round(avg(rating)::numeric, 2), 0.0) as avg_rating,
+                   count(*) as review_count
+            from rn_property_reviews
+            where property_id = :propertyId
+            """;
+        return jdbcTemplate.queryForObject(sql,
+            new MapSqlParameterSource("propertyId", propertyId),
+            (rs, rowNum) -> new ReviewSummary(rs.getDouble("avg_rating"), rs.getInt("review_count")));
+    }
+
+    @Override
+    public Map<Long, ReviewSummary> findSummariesForPropertyIds(List<Long> propertyIds) {
+        if (propertyIds == null || propertyIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        String sql = """
+            select property_id,
+                   round(avg(rating)::numeric, 2) as avg_rating,
+                   count(*) as review_count
+            from rn_property_reviews
+            where property_id in (:propertyIds)
+            group by property_id
+            """;
+        Map<Long, ReviewSummary> result = new HashMap<>();
+        jdbcTemplate.query(sql,
+            new MapSqlParameterSource("propertyIds", propertyIds),
+            rs -> {
+                result.put(rs.getLong("property_id"),
+                    new ReviewSummary(rs.getDouble("avg_rating"), rs.getInt("review_count")));
+            });
+        return result;
     }
 }

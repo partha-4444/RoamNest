@@ -5,39 +5,29 @@ import java.time.OffsetDateTime;
 public class BookingMessageResponse {
     private final Long id;
     private final Long bookingId;
-    private final Long senderId;
+    /**
+     * "GUEST" or "OWNER" — never the raw userId, to preserve guest anonymity
+     * even in post-approval conversations.
+     */
+    private final String senderRole;
     private final String message;
     private final OffsetDateTime createdAt;
 
     public BookingMessageResponse(Long id,
                                   Long bookingId,
-                                  Long senderId,
+                                  String senderRole,
                                   String message,
                                   OffsetDateTime createdAt) {
         this.id = id;
         this.bookingId = bookingId;
-        this.senderId = senderId;
+        this.senderRole = senderRole;
         this.message = message;
         this.createdAt = createdAt;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public Long getBookingId() {
-        return bookingId;
-    }
-
-    public Long getSenderId() {
-        return senderId;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public Long getId() { return id; }
+    public Long getBookingId() { return bookingId; }
+    public String getSenderRole() { return senderRole; }
+    public String getMessage() { return message; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
 }

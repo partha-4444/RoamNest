@@ -87,7 +87,7 @@ class BookingMessageServiceTest {
     }
 
     @Test
-    void guestCanSendMessageForApprovedBooking() {
+    void guestMessageHasGuestSenderRole() {
         BookingMessageRecord saved = message(55L, 1L, 20L, "Hello owner");
         when(userDao.findByUsername("user@example.com")).thenReturn(Optional.of(user(20L, "USER")));
         when(bookingDao.findById(1L)).thenReturn(Optional.of(booking(1L, 10L, 20L, "APPROVED")));
@@ -102,10 +102,11 @@ class BookingMessageServiceTest {
         assertEquals(20L, captor.getValue().getSenderId());
         assertEquals(1L, captor.getValue().getBookingId());
         assertEquals(55L, response.getId());
+        assertEquals("GUEST", response.getSenderRole());
     }
 
     @Test
-    void ownerCanReplyOnOwnedPropertyBooking() {
+    void ownerMessageHasOwnerSenderRole() {
         BookingMessageRecord saved = message(56L, 1L, 5L, "Welcome!");
         when(userDao.findByUsername("owner@example.com")).thenReturn(Optional.of(user(5L, "OWNER")));
         when(bookingDao.findById(1L)).thenReturn(Optional.of(booking(1L, 10L, 20L, "APPROVED")));
@@ -120,6 +121,22 @@ class BookingMessageServiceTest {
         verify(messageDao).create(captor.capture());
         assertEquals(5L, captor.getValue().getSenderId());
         assertEquals(56L, response.getId());
+        assertEquals("OWNER", response.getSenderRole());
+    }
+
+    @Test
+    void senderRoleIsGuestWhenSenderMatchesBookingUserId() {
+        // booking.userId = 20; sender = 20 → GUEST
+        BookingMessageRecord saved = message(60L, 1L, 20L, "Test");
+        when(userDao.findByUsername("user@example.com")).thenReturn(Optional.of(user(20L, "USER")));
+        when(bookingDao.findById(1L)).thenReturn(Optional.of(booking(1L, 10L, 20L, "APPROVED")));
+        when(messageDao.create(any())).thenReturn(60L);
+        when(messageDao.findById(60L)).thenReturn(Optional.of(saved));
+
+        BookingMessageResponse response = bookingMessageService.sendMessage(
+            "user@example.com", 1L, messageRequest("Test"));
+
+        assertEquals("GUEST", response.getSenderRole());
     }
 
     private CreateMessageRequest messageRequest(String text) {

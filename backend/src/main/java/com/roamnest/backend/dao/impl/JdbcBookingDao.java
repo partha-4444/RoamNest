@@ -2,6 +2,7 @@ package com.roamnest.backend.dao.impl;
 
 import com.roamnest.backend.dao.BookingDao;
 import com.roamnest.backend.model.BookingRecord;
+import com.roamnest.backend.model.OwnerBookingRecord;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -129,6 +130,96 @@ public class JdbcBookingDao implements BookingDao {
             .addValue("bookingId", bookingId);
         jdbcTemplate.update(sql, params);
     }
+
+    @Override
+    public Optional<OwnerBookingRecord> findOwnerBookingById(Long bookingId) {
+        String sql = """
+            select b.id, b.property_id, p.title as property_title, p.location as property_location,
+                   u.id as guest_user_id, u.full_name as guest_full_name, u.username as guest_username,
+                   u.phone_no as guest_phone_no, u.address as guest_address,
+                   b.check_in_date, b.check_out_date, b.guests, b.status,
+                   b.owner_decision_note, b.decided_at, b.created_at, b.updated_at
+            from rn_bookings b
+            join rn_properties p on b.property_id = p.id
+            join rn_users u on b.user_id = u.id
+            where b.id = :bookingId
+            """;
+        List<OwnerBookingRecord> results = jdbcTemplate.query(
+            sql,
+            new MapSqlParameterSource("bookingId", bookingId),
+            OWNER_BOOKING_ROW_MAPPER);
+        return results.stream().findFirst();
+    }
+
+    @Override
+    public List<OwnerBookingRecord> findByOwnerIdAndStatus(Long ownerId, String status) {
+        StringBuilder sql = new StringBuilder("""
+            select b.id, b.property_id, p.title as property_title, p.location as property_location,
+                   u.id as guest_user_id, u.full_name as guest_full_name, u.username as guest_username,
+                   u.phone_no as guest_phone_no, u.address as guest_address,
+                   b.check_in_date, b.check_out_date, b.guests, b.status,
+                   b.owner_decision_note, b.decided_at, b.created_at, b.updated_at
+            from rn_bookings b
+            join rn_properties p on b.property_id = p.id
+            join rn_users u on b.user_id = u.id
+            where p.owner_id = :ownerId
+            """);
+        MapSqlParameterSource params = new MapSqlParameterSource("ownerId", ownerId);
+
+        if (status != null && !status.isBlank()) {
+            sql.append(" and b.status = :status");
+            params.addValue("status", status.toUpperCase());
+        }
+        sql.append(" order by b.created_at desc");
+
+        return jdbcTemplate.query(sql.toString(), params, OWNER_BOOKING_ROW_MAPPER);
+    }
+
+    @Override
+    public List<OwnerBookingRecord> findByUserIdAndStatus(Long userId, String status) {
+        StringBuilder sql = new StringBuilder("""
+            select b.id, b.property_id, p.title as property_title, p.location as property_location,
+                   null as guest_user_id, null as guest_full_name, null as guest_username,
+                   null as guest_phone_no, null as guest_address,
+                   b.check_in_date, b.check_out_date, b.guests, b.status,
+                   b.owner_decision_note, b.decided_at, b.created_at, b.updated_at
+            from rn_bookings b
+            join rn_properties p on b.property_id = p.id
+            where b.user_id = :userId
+            """);
+        MapSqlParameterSource params = new MapSqlParameterSource("userId", userId);
+
+        if (status != null && !status.isBlank()) {
+            sql.append(" and b.status = :status");
+            params.addValue("status", status.toUpperCase());
+        }
+        sql.append(" order by b.created_at desc");
+
+        return jdbcTemplate.query(sql.toString(), params, OWNER_BOOKING_ROW_MAPPER);
+    }
+
+    private static final org.springframework.jdbc.core.RowMapper<OwnerBookingRecord> OWNER_BOOKING_ROW_MAPPER =
+        (rs, rowNum) -> {
+            OwnerBookingRecord rec = new OwnerBookingRecord();
+            rec.setId(rs.getLong("id"));
+            rec.setPropertyId(rs.getLong("property_id"));
+            rec.setPropertyTitle(rs.getString("property_title"));
+            rec.setPropertyLocation(rs.getString("property_location"));
+            rec.setGuestUserId(getNullableLong(rs.getObject("guest_user_id")));
+            rec.setGuestFullName(rs.getString("guest_full_name"));
+            rec.setGuestUsername(rs.getString("guest_username"));
+            rec.setGuestPhoneNo(rs.getString("guest_phone_no"));
+            rec.setGuestAddress(rs.getString("guest_address"));
+            rec.setCheckInDate(rs.getObject("check_in_date", LocalDate.class));
+            rec.setCheckOutDate(rs.getObject("check_out_date", LocalDate.class));
+            rec.setGuests(rs.getInt("guests"));
+            rec.setStatus(rs.getString("status"));
+            rec.setOwnerDecisionNote(rs.getString("owner_decision_note"));
+            rec.setDecidedAt(rs.getObject("decided_at", OffsetDateTime.class));
+            rec.setCreatedAt(rs.getObject("created_at", OffsetDateTime.class));
+            rec.setUpdatedAt(rs.getObject("updated_at", OffsetDateTime.class));
+            return rec;
+        };
 
     private static Long getNullableLong(Object value) {
         if (value instanceof Number number) {

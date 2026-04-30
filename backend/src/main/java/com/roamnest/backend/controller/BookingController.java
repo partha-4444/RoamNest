@@ -6,6 +6,8 @@ import com.roamnest.backend.dto.BookingResponse;
 import com.roamnest.backend.dto.CreateBookingRequest;
 import com.roamnest.backend.dto.CreateMessageRequest;
 import com.roamnest.backend.dto.CreateReviewRequest;
+import com.roamnest.backend.dto.MyBookingResponse;
+import com.roamnest.backend.dto.OwnerBookingResponse;
 import com.roamnest.backend.dto.PropertyReviewResponse;
 import com.roamnest.backend.service.BookingMessageService;
 import com.roamnest.backend.service.BookingService;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -47,17 +50,36 @@ public class BookingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /**
+     * Owner-side booking queue: lists bookings for this owner's properties.
+     * Guest identity is never included in the response — only an opaque guestRef.
+     * Optional status filter: PENDING, APPROVED, REJECTED, CANCELLED. Omit for all.
+     */
+    @GetMapping("/owner")
+    public ResponseEntity<List<OwnerBookingResponse>> listOwnerBookings(
+        Authentication authentication,
+        @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(bookingService.listOwnerBookings(authentication.getName(), status));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<MyBookingResponse>> listMyBookings(
+        Authentication authentication,
+        @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(bookingService.listMyBookings(authentication.getName(), status));
+    }
+
     @PatchMapping("/{bookingId}/approve")
-    public ResponseEntity<BookingResponse> approveBooking(Authentication authentication,
-                                                          @PathVariable Long bookingId,
-                                                          @RequestBody(required = false) BookingDecisionRequest request) {
+    public ResponseEntity<OwnerBookingResponse> approveBooking(Authentication authentication,
+                                                               @PathVariable Long bookingId,
+                                                               @RequestBody(required = false) BookingDecisionRequest request) {
         return ResponseEntity.ok(bookingService.approveBooking(authentication.getName(), bookingId, request));
     }
 
     @PatchMapping("/{bookingId}/reject")
-    public ResponseEntity<BookingResponse> rejectBooking(Authentication authentication,
-                                                         @PathVariable Long bookingId,
-                                                         @RequestBody(required = false) BookingDecisionRequest request) {
+    public ResponseEntity<OwnerBookingResponse> rejectBooking(Authentication authentication,
+                                                              @PathVariable Long bookingId,
+                                                              @RequestBody(required = false) BookingDecisionRequest request) {
         return ResponseEntity.ok(bookingService.rejectBooking(authentication.getName(), bookingId, request));
     }
 
