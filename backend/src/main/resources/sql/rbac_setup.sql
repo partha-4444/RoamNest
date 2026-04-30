@@ -133,6 +133,29 @@ create index if not exists idx_rn_property_reviews_property_id
 create index if not exists idx_rn_property_reviews_user_id
     on rn_property_reviews(user_id);
 
+create table if not exists rn_wishlists (
+    id bigserial primary key,
+    user_id bigint not null references rn_users(id) on delete cascade,
+    name varchar(120) not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_rn_wishlists_user_lower_name
+    on rn_wishlists(user_id, lower(name));
+create index if not exists idx_rn_wishlists_user_created
+    on rn_wishlists(user_id, created_at desc);
+
+create table if not exists rn_wishlist_properties (
+    wishlist_id bigint not null references rn_wishlists(id) on delete cascade,
+    property_id bigint not null references rn_properties(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key (wishlist_id, property_id)
+);
+
+create index if not exists idx_rn_wishlist_properties_property_id
+    on rn_wishlist_properties(property_id);
+
 insert into rn_roles(name) values ('ADMIN') on conflict (name) do nothing;
 insert into rn_roles(name) values ('OWNER') on conflict (name) do nothing;
 insert into rn_roles(name) values ('USER') on conflict (name) do nothing;
@@ -319,5 +342,59 @@ insert into rn_role_api_privileges(role_id, api_object_id)
 select r.id, a.id
 from rn_roles r
 join rn_api_objects a on a.name = 'BOOKINGS_ME'
+where r.name = 'USER'
+on conflict (role_id, api_object_id) do nothing;
+
+-- Wishlist endpoints for saved property collections.
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('WISHLISTS_LIST', '/api/wishlists', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('WISHLISTS_CREATE', '/api/wishlists', 'POST', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('WISHLISTS_GET', '/api/wishlists/*', 'GET', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('WISHLISTS_ADD_PROPERTY', '/api/wishlists/*/properties/*', 'POST', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_api_objects(name, path_pattern, http_method, is_public)
+values ('WISHLISTS_REMOVE_PROPERTY', '/api/wishlists/*/properties/*', 'DELETE', false)
+on conflict (name) do update
+set path_pattern = excluded.path_pattern,
+    http_method = excluded.http_method,
+    is_public = excluded.is_public,
+    updated_at = now();
+
+insert into rn_role_api_privileges(role_id, api_object_id)
+select r.id, a.id
+from rn_roles r
+join rn_api_objects a on a.name in (
+    'WISHLISTS_LIST',
+    'WISHLISTS_CREATE',
+    'WISHLISTS_GET',
+    'WISHLISTS_ADD_PROPERTY',
+    'WISHLISTS_REMOVE_PROPERTY'
+)
 where r.name = 'USER'
 on conflict (role_id, api_object_id) do nothing;

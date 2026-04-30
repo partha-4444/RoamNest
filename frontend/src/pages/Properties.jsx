@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import SaveToWishlistModal from '../components/SaveToWishlistModal';
 import api from '../api';
 
 const SORT_OPTIONS = [
@@ -22,6 +23,8 @@ export default function Properties({ role, username, onLogout }) {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [wishlistProperty, setWishlistProperty] = useState(null);
+  const [savedPropertyIds, setSavedPropertyIds] = useState(() => new Set());
   const navigate = useNavigate();
 
   const search = useCallback(() => {
@@ -44,6 +47,13 @@ export default function Properties({ role, username, onLogout }) {
   useEffect(() => { search(); }, []);
 
   const set = (key, val) => setFilters(prev => ({ ...prev, [key]: val }));
+  const markSaved = (propertyId) => {
+    setSavedPropertyIds(prev => {
+      const next = new Set(prev);
+      next.add(propertyId);
+      return next;
+    });
+  };
   const activeFilters = Object.entries(filters)
     .filter(([key, value]) => key !== 'sort' && String(value).trim())
     .map(([key, value]) => `${key}: ${value}`);
@@ -150,7 +160,24 @@ export default function Properties({ role, username, onLogout }) {
               style={s.card}
               onClick={() => navigate(`/properties/${p.id}`, { state: { property: p } })}
             >
-              <div style={s.img} />
+              <div style={s.img}>
+                {role === 'USER' && (
+                  <button
+                    type="button"
+                    style={{
+                      ...s.heartBtn,
+                      ...(savedPropertyIds.has(p.id) ? s.heartBtnSaved : {}),
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setWishlistProperty(p);
+                    }}
+                    aria-label="Save property to wishlist"
+                  >
+                    {savedPropertyIds.has(p.id) ? '♥' : '♡'}
+                  </button>
+                )}
+              </div>
               <div style={s.info}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
                   <h3 style={{fontSize: '15px', margin: 0, flex: 1}}>{p.title}</h3>
@@ -191,6 +218,12 @@ export default function Properties({ role, username, onLogout }) {
           ))}
         </div>}
       </div>
+      <SaveToWishlistModal
+        open={Boolean(wishlistProperty)}
+        property={wishlistProperty}
+        onClose={() => setWishlistProperty(null)}
+        onSaved={markSaved}
+      />
     </div>
   );
 }
@@ -213,7 +246,9 @@ const s = {
   results: { },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' },
   card: { overflow: 'hidden', transition: 'transform 0.2s', cursor: 'pointer' },
-  img: { height: '200px', backgroundImage: 'url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' },
+  img: { height: '200px', backgroundImage: 'url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' },
+  heartBtn: { position: 'absolute', top: '12px', right: '12px', width: '38px', height: '38px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(15,23,42,0.65)', color: 'white', cursor: 'pointer', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' },
+  heartBtnSaved: { color: '#fb7185', background: 'rgba(15,23,42,0.82)' },
   info: { padding: '14px' },
   skeletonCard: { height: '310px', background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.09), rgba(255,255,255,0.04))' },
 };

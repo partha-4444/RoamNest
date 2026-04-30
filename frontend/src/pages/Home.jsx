@@ -1,17 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BurgerMenu from '../components/BurgerMenu';
+import SaveToWishlistModal from '../components/SaveToWishlistModal';
 import api from '../api';
 
 export default function Home({ role, username, onLogout }) {
   const [properties, setProperties] = useState([]);
   const [summary, setSummary] = useState(null);
   const [pendingCount, setPendingCount] = useState(null);
+  const [wishlistProperty, setWishlistProperty] = useState(null);
+  const [savedPropertyIds, setSavedPropertyIds] = useState(() => new Set());
   const navigate = useNavigate();
 
   const isAdmin = role === 'ADMIN';
   const isOwner = role === 'OWNER';
   const isUser  = role === 'USER';
+
+  const markSaved = (propertyId) => {
+    setSavedPropertyIds(prev => {
+      const next = new Set(prev);
+      next.add(propertyId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isUser || isOwner) {
@@ -98,7 +109,24 @@ export default function Home({ role, username, onLogout }) {
                     style={styles.propertyCard}
                     onClick={() => navigate(`/properties/${p.id}`, { state: { property: p } })}
                   >
-                    <div style={{...styles.propertyImage, backgroundImage: `url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)`}} />
+                    <div style={{...styles.propertyImage, backgroundImage: `url(https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=800&q=80)`}}>
+                      {isUser && (
+                        <button
+                          type="button"
+                          style={{
+                            ...styles.heartBtn,
+                            ...(savedPropertyIds.has(p.id) ? styles.heartBtnSaved : {}),
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWishlistProperty(p);
+                          }}
+                          aria-label="Save property to wishlist"
+                        >
+                          {savedPropertyIds.has(p.id) ? '♥' : '♡'}
+                        </button>
+                      )}
+                    </div>
                     <div style={styles.propertyInfo}>
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                         <h3 style={{fontSize: '15px', margin: 0}}>{p.title}</h3>
@@ -190,6 +218,12 @@ export default function Home({ role, username, onLogout }) {
         )}
 
       </main>
+      <SaveToWishlistModal
+        open={Boolean(wishlistProperty)}
+        property={wishlistProperty}
+        onClose={() => setWishlistProperty(null)}
+        onSaved={markSaved}
+      />
     </div>
   );
 }
@@ -321,6 +355,28 @@ const styles = {
     height: '240px',
     backgroundSize: 'cover',
     backgroundPosition: 'center',
+    position: 'relative',
+  },
+  heartBtn: {
+    position: 'absolute',
+    top: '12px',
+    right: '12px',
+    width: '38px',
+    height: '38px',
+    borderRadius: '50%',
+    border: '1px solid rgba(255,255,255,0.35)',
+    background: 'rgba(15,23,42,0.65)',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(8px)',
+  },
+  heartBtnSaved: {
+    color: '#fb7185',
+    background: 'rgba(15,23,42,0.82)',
   },
   propertyInfo: {
     padding: '16px'
