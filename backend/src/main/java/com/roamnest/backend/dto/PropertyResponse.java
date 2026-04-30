@@ -1,0 +1,86 @@
+package com.roamnest.backend.dto;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+public class PropertyResponse {
+    private final Long id;
+    private final Long ownerId;
+    private final String title;
+    private final String description;
+    private final String location;
+    private final String address;
+    private final BigDecimal pricePerNight;
+    private final Integer maxGuests;
+    private final boolean available;
+    private final OffsetDateTime createdAt;
+    private final OffsetDateTime updatedAt;
+
+    public PropertyResponse(Long id,
+                            Long ownerId,
+                            String title,
+                            String description,
+                            String location,
+                            String address,
+                            BigDecimal pricePerNight,
+                            Integer maxGuests,
+                            boolean available,
+                            OffsetDateTime createdAt,
+                            OffsetDateTime updatedAt) {
+        this.id = id;
+        this.ownerId = ownerId;
+        this.title = title;
+        this.description = description;
+        this.location = location;
+        this.address = address;
+        this.pricePerNight = pricePerNight;
+        this.maxGuests = maxGuests;
+        this.available = available;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getOwnerId() {
+        return ownerId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public BigDecimal getPricePerNight() {
+        return pricePerNight;
+    }
+
+    public Integer getMaxGuests() {
+        return maxGuests;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+}

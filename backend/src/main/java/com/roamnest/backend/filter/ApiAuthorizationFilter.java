@@ -49,6 +49,7 @@ public class ApiAuthorizationFilter extends OncePerRequestFilter {
             .orElse("");
 
         boolean hasAccess = authorizationService.hasApiAccess(roleName, path, request.getMethod());
+
         if (!hasAccess) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;

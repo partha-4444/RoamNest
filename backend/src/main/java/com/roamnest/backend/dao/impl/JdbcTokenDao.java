@@ -5,6 +5,9 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Types;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.Instant;
 
 @Repository
@@ -32,10 +35,11 @@ public class JdbcTokenDao implements TokenDao {
             insert into rn_auth_tokens (user_id, token_value, active, expires_at)
             values (:userId, :tokenValue, true, :expiresAt)
             """;
+        OffsetDateTime expiresAtUtc = expiresAt == null ? null : expiresAt.atOffset(ZoneOffset.UTC);
         jdbcTemplate.update(sql, new MapSqlParameterSource()
             .addValue("userId", userId)
             .addValue("tokenValue", token)
-            .addValue("expiresAt", expiresAt));
+            .addValue("expiresAt", expiresAtUtc, Types.TIMESTAMP_WITH_TIMEZONE));
     }
 
     @Override
