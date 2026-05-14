@@ -1,20 +1,21 @@
 # Project Title
-[Insert Project Title Here]
+RoamNest
 
 ## Type
-**Copyright**: [Insert Copyright Information / Type Here]
+**Copyright**
+
 
 ## Roll Number and Names
 | Roll Number | Name |
 | :--- | :--- |
-| [Roll No 1] | [Name 1] |
-| [Roll No 2] | [Name 2] |
-| [Roll No 3] | [Name 3] |
+| 2210992031 | Partha Pratim Tamuly |
+| 2210991932 | Mohit Kumar Gupta |
+
 
 ## Team Details
-* **Team Name:** [Insert Team Name]
-* **Guide/Mentor:** [Insert Guide Name]
-* **Other Details:** [Insert any other relevant team details]
+* **Team Name:** RoamNest
+* **Guide/Mentor:** Dr. Preeti Saini
+
 
 ## Current Status of the Project
-[Insert Current Status Here, e.g., "In Development", "Completed", "Beta Testing Phase", etc.]
+Completed
